@@ -279,3 +279,74 @@ To ensure the tunnel is routing traffic correctly, you must verify connectivity 
 ### Expert Troubleshooting Tip
 
 If you can ping by IP but not by name (e.g., `ping google.com` fails), your VPN client hasn't been assigned a **DNS Server**. In the RRAS properties, ensure you are pushing your internal DNS server IP to clients.
+
+In Windows Server 2025/2026, the Routing and Remote Access Service (RRAS) has evolved. Modern security standards now favor **SSTP** and **IKEv2**, while older protocols like PPTP and L2TP are disabled by default for fresh installations.
+
+Here is the expert-level, step-by-step breakdown for configuring RRAS.
+
+---
+
+## Step 2: Configuring RRAS (The VPN Engine)
+
+Once the role is installed, follow these steps to turn the service from a passive feature into an active gateway:
+
+1. **Open the Console:** Go to **Server Manager** > **Tools** > **Routing and Remote Access**.
+2. **Initialize the Server:** * Right-click your server name (it will have a red down arrow).
+* Select **Configure and Enable Routing and Remote Access**.
+
+
+3. **The Setup Wizard:**
+* Click **Next** on the Welcome screen.
+* Select **Custom Configuration** (Experts prefer this over the "standard" wizard because it gives granular control over NAT and VPN settings simultaneously).
+* Check **VPN Access** and **NAT** (Network Address Translation). NAT is crucial if you want your VPN clients to be able to "ping the outside world" or browse the internet using the server's connection.
+
+
+4. **Start the Service:** Click **Finish** and then **Start Service**. The arrow should turn green.
+
+---
+
+## Expert Tuning: Ports and Static Pools
+
+After the service is running, you must define how clients get their IP addresses and which protocols are allowed.
+
+### 1. Configure the IP Address Pool
+
+1. Right-click your Server > **Properties**.
+2. Go to the **IPv4 tab**.
+3. Select **Static address pool** and click **Add**.
+4. **Range:** Enter a range like `10.0.0.100` to `10.0.0.150`. This ensures VPN clients don't conflict with your internal server IPs.
+* *Note:* Ensure this subnet is reachable from your internal network.
+
+
+
+### 2. Configure NAT (For Internet Access)
+
+If you want to "ping an outside network" from the VPN client:
+
+1. Expand **IPv4** in the left pane.
+2. Right-click **NAT** > **New Interface**.
+3. Select your **External (Internet-facing) Interface**.
+4. Select **Public interface connected to the Internet** and check **Enable NAT on this interface**.
+
+### 3. Manage VPN Protocols (Ports)
+
+1. In the RRAS console, click on **Ports**.
+2. Right-click **Ports** > **Properties**.
+3. If you are using **SSTP** (recommended for bypassing firewalls), ensure **WAN Miniport (SSTP)** is enabled.
+4. *Security Tip:* If you aren't using PPTP or L2TP, set their "Maximum ports" to **0** to reduce the attack surface.
+
+---
+
+## Important Firewall Rules
+
+For these steps to work, your edge router/firewall must allow specific traffic to hit your Windows Server:
+
+* **SSTP:** TCP Port 443
+* **IKEv2:** UDP Port 500 & 4500
+* **L2TP:** UDP Port 1701
+
+---
+
+[Windows Server VPN Setup Guide](https://www.youtube.com/watch?v=biHO5oUfNQ0)
+
+This video provides a practical visual walk-through of the RRAS console settings, specifically focusing on L2TP and the necessary port configurations.
