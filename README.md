@@ -192,3 +192,90 @@ These protocols determine how the client proves their identity to the VPN server
 | **SSTP** | **TCP** | **443** | **High** | **Excellent (Stealth)** |
 
 **Technical Verdict:** If you are designing a system for high-security "CIA-style" remote access where the user might be behind a restrictive government or corporate firewall, **SSTP** or **OpenVPN (TCP 443)** combined with **EAP-TLS (Certificates)** is the gold standard for reliability and encryption.
+
+Setting up a professional-grade VPN on Windows Server requires moving beyond basic configurations to a production-ready environment. This guide covers the integration of **Routing and Remote Access (RRAS)** with **Network Policy Server (NPS)** for a secure, authenticated tunnel.
+
+---
+
+## Phase 1: Install and Configure RRAS
+
+**Routing and Remote Access Service (RRAS)** is the core role that transforms Windows Server into a VPN Gateway.
+
+### Step 1: Install the Role
+
+1. Open **Server Manager** > **Manage** > **Add Roles and Features**.
+2. Select **Remote Access**.
+3. On the Role Services page, check **DirectAccess and VPN (RAS)** and **Routing**.
+4. Complete the installation and restart if prompted.
+
+### Step 2: Configure RRAS
+
+1. Open **Routing and Remote Access** from the Tools menu.
+2. Right-click your Server Name and select **Configure and Enable Routing and Remote Access**.
+3. Choose **Remote Access (Dial-up or VPN)**.
+4. Select **VPN** and choose the Network Interface connected to the Internet.
+5. **IP Address Assignment:** Choose **From a specified range of addresses** (e.g., `10.0.0.10` to `10.0.0.100`) to ensure VPN clients receive internal IPs.
+
+---
+
+## Phase 2: Understanding and Launching NPS (RADIUS)
+
+### What is a RADIUS Server?
+
+**Remote Authentication Dial-In User Service (RADIUS)** is a networking protocol that provides centralized Authentication, Authorization, and Accounting (AAA).
+
+* **The Problem:** Without RADIUS, you have to manage permissions on the VPN server itself.
+* **The Solution:** RADIUS allows the VPN server to "ask" a central server (NPS) if a user is allowed in. This is how you integrate **MFA** and Active Directory groups.
+
+### Launch and Link NPS
+
+1. In **Server Manager**, go to **Tools** > **Network Policy Server**.
+2. Right-click **NPS (Local)** and select **Register server in Active Directory**.
+3. In the **RRAS console**, right-click your Server > **Properties** > **Security tab**.
+4. Change Authentication Provider to **RADIUS Authentication** and click **Configure**.
+5. Enter the IP of your NPS server and a **Shared Secret** (a complex password used for the server-to-server handshake).
+
+---
+
+## Phase 3: Define Network Policies
+
+In the NPS console, you must create a **Network Policy** to allow access.
+
+1. Go to **Policies** > **Network Policies** > **New**.
+2. **Conditions:** Add **User Groups** (e.g., "VPN_Users") and **NAS Port Type** (set to "Virtual (VPN)").
+3. **Permissions:** Set to **Access Granted**.
+4. **Authentication Methods:** Ensure **MS-CHAPv2** is selected (this is the standard encrypted handshake).
+
+---
+
+## Phase 4: Setting Up the VPN Client (Windows 10/11)
+
+Now, configure the "Remote User" side.
+
+1. On the client PC, go to **Settings** > **Network & Internet** > **VPN** > **Add a VPN Connection**.
+2. **VPN Provider:** Windows (built-in).
+3. **Server name or address:** Use the Public IP or FQDN of your Windows Server.
+4. **VPN type:** Set to **SSTP** (Secure Socket Tunneling Protocol) or **L2TP/IPsec** depending on your server config.
+5. **Type of sign-in info:** User name and password.
+
+---
+
+## Phase 5: Verification (The "Ping" Test)
+
+To ensure the tunnel is routing traffic correctly, you must verify connectivity to the "outside" or internal resources.
+
+1. Connect the VPN on the client machine.
+2. Open **Command Prompt**.
+3. Type `ipconfig`. You should see a **PPP adapter** with an IP from the range you set in Phase 1 (e.g., `10.0.0.10`).
+4. **Ping the Gateway:** `ping 10.0.0.1` (Your internal server IP). If it replies, your tunnel is active.
+5. **Ping an Outside Network:** `ping 8.8.8.8`.
+* **Success:** Traffic is flowing through the VPN and out the server's gateway (Split Tunneling may be off).
+* **Failure:** You likely have a routing issue in RRAS or a firewall blocking ICMP traffic.
+
+
+
+---
+
+### Expert Troubleshooting Tip
+
+If you can ping by IP but not by name (e.g., `ping google.com` fails), your VPN client hasn't been assigned a **DNS Server**. In the RRAS properties, ensure you are pushing your internal DNS server IP to clients.
