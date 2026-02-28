@@ -135,3 +135,60 @@ Modern enterprise VPNs often use **Adaptive (or Risk-Based) Authentication**. In
 ### Why this matters for a Business Solutions Analyst
 
 For someone in your role, this ensures that even if you are moving between home, the office, or a client site, the company's data remains "Zero Trust." You don't just trust the connection because it has a password; you verify it based on **who**, **where**, and **what** device is connecting.
+
+This technical breakdown follows your logic flow, categorizing VPN protocols by their tunneling mechanisms, port requirements, and authentication handshakes.
+
+---
+
+## **1. VPN Tunneling & Transport Layer Protocols**
+
+### **PPTP (Point-to-Point Tunneling Protocol)**
+
+* **Port:** TCP 1723 + GRE (Generic Routing Encapsulation).
+* **Status:** **Legacy/Deprecated.** It is fast due to low overhead but fundamentally insecure (broken by NSA/security researchers).
+* **Best For:** Internal testing where security is irrelevant.
+
+### **L2TP/IPsec (Layer 2 Tunneling Protocol)**
+
+* **Mechanism:** L2TP provides the tunnel; **IPsec** provides the encryption (since L2TP has none).
+* **Ports:** UDP 500 (ISAKMP), UDP 4500 (NAT Traversal).
+* **Analysis:** Double encapsulation makes it slower than PPTP but highly secure. It is often blocked by firewalls because it doesn't use standard web ports.
+
+### **SSTP (Secure Socket Tunneling Protocol)**
+
+* **Mechanism:** **TCP-based.** It wraps PPP traffic inside an **SSL/TLS** session.
+* **Port:** **TCP 443** (HTTPS).
+* **The "Firewall Killer":** Since it uses the same port as standard web traffic (HTTPS), it can bypass almost any firewall or proxy that allows web browsing.
+* **Ownership:** Developed by Microsoft; primarily used in Windows environments.
+
+---
+
+## **2. Authentication Frameworks (The Handshake)**
+
+These protocols determine how the client proves their identity to the VPN server:
+
+* **PAP (Password Authentication Protocol):** * **Security:** **Zero.** Sends passwords in **plain text**.
+* **Verdict:** Never use in production.
+
+
+* **CHAP (Challenge Handshake Authentication Protocol):** * **Mechanism:** Uses a "three-way handshake" and a shared secret. The server sends a challenge; the client responds with a hash.
+* **Benefit:** The actual password never crosses the network.
+
+
+* **EAP (Extensible Authentication Protocol):**
+* **Mechanism:** A framework, not just a protocol. It supports advanced methods like **Digital Certificates**, Smart Cards, and Multi-Factor Authentication (MFA).
+* **Usage:** Standard for WPA2/WPA3 Enterprise and high-security VPNs (IKEv2).
+
+
+
+---
+
+## **3. Strategic Comparison for your "CIA Report" Logic**
+
+| Protocol | Transport | Port | Security Level | Firewall Penetration |
+| --- | --- | --- | --- | --- |
+| **PPTP** | TCP | 1723 | Low (Weak) | Moderate |
+| **L2TP/IPsec** | UDP | 500/4500 | High | Low (Easily Blocked) |
+| **SSTP** | **TCP** | **443** | **High** | **Excellent (Stealth)** |
+
+**Technical Verdict:** If you are designing a system for high-security "CIA-style" remote access where the user might be behind a restrictive government or corporate firewall, **SSTP** or **OpenVPN (TCP 443)** combined with **EAP-TLS (Certificates)** is the gold standard for reliability and encryption.
